@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Shared.Util.Extension;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -20,24 +21,25 @@ namespace Shared.Api.Schedule.Instance
             Frequency = frequency;
         }
 
-        public Task ExecuteAsync(CancellationToken cancellationToken)
+        public async Task ExecuteAsync(CancellationToken cancellationToken)
         {
+            if (cancellationToken.IsCancellationRequested) cancellationToken.ThrowIfCancellationRequested();
+
             if (!string.IsNullOrEmpty(Domain))
             {
                 using (var client = new System.Net.Http.HttpClient())
                 {
-                    client.BaseAddress = new Uri(Domain);
-                    var response = client.GetAsync(string.Empty).Result;
-                    var responseMsg = response.EnsureSuccessStatusCode();
-                    var stringResponse = response.Content.ReadAsStringAsync().Result;
+                    var baseAddress = new Uri(Domain);
+                    client.BaseAddress = baseAddress;
+                    var response = await client.GetAsync(baseAddress.AddPath("/api/Token"));
+                    await LogAsync(response.IsSuccessStatusCode, $"[{(int)response.StatusCode} {response.StatusCode}]  {Schedule}");
                 }
-
-                return Task.Factory.StartNew(() => Log());
             }
-
-            return Task.CompletedTask;
         }
 
-        public virtual void Log() { }
+        public async virtual Task LogAsync(bool success, string msg)
+        {
+            await Task.Delay(0);
+        }
     }
 }

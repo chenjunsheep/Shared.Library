@@ -6,7 +6,7 @@ namespace Shared.Api.Auth.Jwt
     {
         public string issuer { get; set; } = "www.ceejay.com";
         public string audience { get; set; } = "www.ceejay.com";
-        public double expiration { get; set; } = TimeSpan.FromHours(4).TotalSeconds;
+        public double expiration { get; set; } = TimeSpan.FromHours(24).TotalSeconds;
         public string fieldtoken { get; } = "access_token";
         public string fieldcutomized { get; } = "ceejay_field";
 

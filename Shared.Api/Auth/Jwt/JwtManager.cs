@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
@@ -51,7 +52,7 @@ namespace Shared.Api.Auth.Jwt
         /// <param name="key">unique Id. E.g. user Id</param>
         /// <param name="content">content of any object formatted in string</param>
         /// <returns></returns>
-        public string GetToken(string key, string content)
+        public string TokenCreate(string key, string content, double expiredHour)
         {
             var ops = JwtOptions.Default;
             var now = DateTime.UtcNow;
@@ -59,7 +60,7 @@ namespace Shared.Api.Auth.Jwt
                 issuer: ops.issuer,
                 audience: ops.audience,
                 notBefore: now,
-                expires: now.AddSeconds(ops.expiration),
+                expires: now.AddHours(expiredHour),
                 signingCredentials: SignCredential,
                 claims: BuildConent(key, content)
             );
@@ -68,7 +69,7 @@ namespace Shared.Api.Auth.Jwt
         }
 
         /// <summary>
-        /// get content encrypted in JWT token
+        /// get content decrypted from JWT token
         /// </summary>
         /// <remarks>
         /// <para>usage sample:</para>
@@ -78,12 +79,33 @@ namespace Shared.Api.Auth.Jwt
         /// </remarks>
         /// <param name="principal">an instance of authorized user named in Microsoft.AspNetCore.Mvc</param>
         /// <returns></returns>
-        public static string GetContent(ClaimsPrincipal principal)
+        public static string TokenDecrypt(ClaimsPrincipal principal)
         {
             if (principal != null)
             {
                 var accessToken = principal.FindFirst(JwtOptions.Default.fieldtoken)?.Value;
                 var jwtToken = new JwtSecurityToken(accessToken);
+                return TokenDecrypt(jwtToken);
+            }
+
+            return string.Empty;
+        }
+
+        /// <summary>
+        /// get content decrypted from JWT token
+        /// </summary>
+        /// <remarks>
+        /// <para>usage sample:</para>
+        /// <code>
+        /// var content = JwtManager.GetContent(JwtSecurityToken);
+        /// </code>
+        /// </remarks>
+        /// <param name="jwtToken">JWT token</param>
+        /// <returns></returns>
+        public static string TokenDecrypt(JwtSecurityToken jwtToken)
+        {
+            if (jwtToken != null)
+            {
                 var content = jwtToken.Payload.Claims.Where(c => c.Type == JwtOptions.Default.fieldcutomized).SingleOrDefault()?.Value;
                 return Decrypt(content);
             }
@@ -133,19 +155,20 @@ namespace Shared.Api.Auth.Jwt
         /// <param name="service">an instence of .Net Core service</param>
         /// <param name="secretKey">secret key</param>
         /// <returns></returns>
-        public static IServiceCollection UseAuthenticationDefault(this IServiceCollection service, string secretKey)
+        public static AuthenticationBuilder UseAuthenticationDefault(this IServiceCollection service, string secretKey)
         {
             if (service != null)
             {
-                service
+                var builder = service
                     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                     .AddJwtBearer(options =>
                     {
                         options.UseJwtOptionsDefault(secretKey);
                     });
+                return builder;
             }
 
-            return service;
+            return null;
         }
 
         /// <summary>
